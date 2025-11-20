@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DTP Expert Service</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-color: #2a2a2a;
+            --border-color: #333;
+            --text-color: #eee;
+            --text-muted: #999;
+            --accent-blue: #0a84ff;
+        }
+
+        body {
+            font-family: system-ui, sans-serif; 
+            background: var(--bg-color); 
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        
+        #top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        #top-bar h2 {
+            text-align: left;
+            margin: 0; 
+            color: #eee;
+            font-weight: 600;
+            letter-spacing: 0;
+            text-transform: none;
+            font-size: 1.5em;
+        }
+        
+        #auth-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: relative; 
+        }
+        
+        #login-btn {
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        #auth-signed-in {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        #user-initial-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #3a3a3a;
+            color: var(--text-color);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1em;
+            cursor: pointer; 
+            border: 2px solid #3a3a3a; 
+        }
+        #user-initial-circle:hover {
+            border: 2px solid #555;
+        }
+        
+        #user-menu {
+            position: absolute;
+            top: 50px; 
+            right: 0;
+            background: #2f2f2f; 
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 100;
+            padding: 8px;
+            width: 200px; 
+        }
+        
+        #user-menu-email {
+            color: var(--text-muted);
+            font-size: 0.85em;
+            padding: 8px 12px 12px 12px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        
+        #logout-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            padding: 10px 12px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            font-size: 0.9em;
+            border-radius: 6px; 
+            box-sizing: border-box; 
+        }
+        
+        #logout-btn:hover {
+            background: #4a4a4a; 
+        }
+
+        
+        #main-content {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1; 
+            overflow: hidden; 
+            position: relative; 
+        }
+
+        #chat-history {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding-bottom: 140px; 
+        }
+        
+        .message {
+            padding: 12px;
+            border-radius: 10px;
+            max-width: 80%;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background: var(--accent-blue);
+            color: white;
+            align-self: flex-end;
+        }
+        .ai-message {
+            background: var(--panel-color);
+            color: var(--text-color);
+            align-self: flex-start;
+        }
+        .message img {
+            border-radius: 5px;
+            margin-top: 10px;
+            max-width: 100%;
+            cursor: zoom-in;
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+        }
+        .message img.loaded {
+            opacity: 1;
+        }
+        .user-message img { max-width: 300px; height: auto; }
+        .ai-message img { max-width: 400px; height: auto; }
+        .message p { margin: 0; }
+        .system-message {
+            background: #5c2c2c;
+            color: #ffc2c2;
+            align-self: center;
+            font-size: 0.9em;
+        }
+        
+        #input-wrapper {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px 10px 0 10px;
+            box-sizing: border-box; 
+            background: linear-gradient(to top, var(--bg-color) 30%, transparent 100%);
+        }
+
+        #input-area {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--panel-color);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 28px; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); 
+        }
+        
+        .input-btn {
+            background: #3a3a3a;
+            border: none;
+            color: var(--text-muted);
+            border-radius: 50%; 
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            font-size: 18px; 
+            cursor: pointer;
+            flex-shrink: 0; 
+        }
+        .input-btn:hover { background: #444; }
+        
+        #task-selector {
+            flex-grow: 1;
+            padding: 10px;
+            box-sizing: border-box;
+            border: none;
+            background: transparent; 
+            color: var(--text-color);
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-align: center;
+        }
+        #task-selector.placeholder {
+            color: var(--text-muted);
+        }
+        
+        #generate-button { 
+            background: var(--accent-blue); 
+            color: white; 
+            cursor: pointer; 
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            font-size: 20px;
+            padding: 0;
+            line-height: 44px;
+            text-align: center;
+            border: none;
+            flex-shrink: 0;
+            display: block; 
+        }
+        
+        #stop-button {
+            background: #3a3a3a; 
+            color: #a0b0ff; 
+            cursor: pointer; 
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            font-size: 28px;
+            padding: 0;
+            line-height: 44px;
+            text-align: center;
+            border: none;
+            flex-shrink: 0;
+            display: none; 
+        }
+
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-menu {
+            background: var(--panel-color);
+            border-radius: 12px;
+            padding: 20px;
+            width: 90%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .modal-menu h3 {
+            margin: 0 0 10px 0;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .modal-menu .modal-option {
+            width: 100%;
+            padding: 15px;
+            box-sizing: border-box;
+            border: 1px solid #444;
+            background: #3a3a3a;
+            color: var(--text-color);
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .modal-menu .modal-option:hover {
+            border-color: var(--accent-blue);
+        }
+
+        #executive-menu textarea, 
+        #fix-prompt-menu textarea,
+        #re-enter-text-menu textarea {
+            width: 100%;
+            height: 120px;
+            box-sizing: border-box;
+            padding: 12px;
+            border: 1px solid #444;
+            background: #1f1f1f;
+            color: var(--text-color);
+            border-radius: 8px;
+            font-size: 16px;
+            resize: none;
+        }
+        #executive-menu button.modal-option, 
+        #fix-prompt-menu button.modal-option,
+        #re-enter-text-menu button.modal-option {
+            background-color: var(--accent-blue);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .hidden-inputs { display: none; }
+
+        #image-viewer-backdrop {
+            display: none; 
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); 
+            z-index: 200; 
+            align-items: center;
+            justify-content: center;
+            cursor: zoom-out; 
+        }
+
+        #image-viewer-img {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain; 
+            border-radius: 5px;
+        }
+        
+        .hidden { display: none; }
+
+        @keyframes subtle-glow {
+            0% { box-shadow: 0 0 5px 0px rgba(10, 132, 255, 0); }
+            50% { box-shadow: 0 0 10px 2px rgba(10, 132, 255, 0.4); }
+            100% { box-shadow: 0 0 5px 0px rgba(10, 132, 255, 0); }
+        }
+        
+        .is-loading-ai {
+            animation: subtle-glow 1.8s infinite ease-in-out;
+        }
+        
+        #footer-disclaimer {
+            padding: 10px;
+            text-align: center;
+            font-size: 0.75em; 
+            color: var(--text-muted);
+            flex-shrink: 0;
+            line-height: 1.3;
+            max-width: 800px; 
+            margin: 0 auto; 
+        }
+        
+    </style>
+</head>
+<body>
+    
+    <div class="hidden-inputs">
+        <input type="file" id="image_input" accept="image/*">
+        <input type="hidden" id="selected_task_prompt">
+        <input type="hidden" id="selected_task_display">
+    </div>
+    
+    <div id="task-modal-backdrop" class="modal-backdrop">
+        <div id="task-menu" class="modal-menu">
+            <h3>Select a DTP Task</h3>
+            
+            <button class="modal-option" data-prompt="make a dtp with full color flat graphic" data-display="Task: Full Color Version">
+                Full Color Version
+            </button>
+            
+            <button class="modal-option" data-prompt="make a full color dtp without texture" data-display="Task: 2D">
+                2D
+            </button>
+            
+            <button class="modal-option" data-prompt="make a dtp with only black and white color and flat graphic" data-display="Task: Black & White Version">
+                Black & White Version
+            </button>
+            <button class="modal-option" data-prompt="fix-specific" data-display="Task: Fix Last Attempt (Specific Correction)">
+                Fix Last Attempt...
+            </button>
+            <button class="modal-option" data-prompt="Recreate the design, but make all text elements significantly bolder." data-display="Task: Make Text Bolder">
+                Make Text Bolder
+            </button>
+            <button class="modal-option" data-prompt="executive" data-display="executive">
+                Custom Request...
+            </button>
+        </div>
+    </div>
+    
+    <div id="help-modal-backdrop" class="modal-backdrop">
+        <div id="help-menu" class="modal-menu">
+            <h3>Help Menu</h3>
+            <button class="modal-option">Option 1 (coming soon)</button>
+            <button class="modal-option">Option 2 (coming soon)</button>
+            <button class="modal-option">Option 3 (coming soon)</button>
+            <button class="modal-option">Option 4 (coming soon)</button>
+        </div>
+    </div>
+
+    <div id="executive-modal-backdrop" class="modal-backdrop">
+        <div id="executive-menu" class="modal-menu">
+            <h3>Enter Your Custom Request</h3>
+            <textarea id="executive-prompt-text" placeholder="e.g., 'i want a dtp without texture'"></textarea>
+            <button id="executive-submit-btn" class="modal-option">Submit Request</button>
+        </div>
+    </div>
+    
+    <div id="fix-prompt-modal-backdrop" class="modal-backdrop">
+        <div id="fix-prompt-menu" class="modal-menu">
+            <h3>What needs fixing?</h3>
+            <textarea id="fix-prompt-text" placeholder="e.g., 'The colors are wrong. Make the background dark green, the outer ring dark red, and the text gold.'"></textarea>
+            <button id="fix-prompt-submit-btn" class="modal-option">Submit Fix</button>
+        </div>
+    </div>
+
+    <div id="fix-submenu-modal-backdrop" class="modal-backdrop">
+        <div id="fix-submenu-menu" class="modal-menu">
+            <h3>How do you want to fix the last attempt?</h3>
+            <button id="fix-submenu-smooth-btn" class="modal-option">
+                Make it Smooth (Remove Texture)
+            </button>
+            
+            <button id="fix-submenu-trace-btn" class="modal-option">
+                Fix: Force Original Colors (Start Over)
+            </button>
+            <button id="fix-submenu-reenter-text-btn" class="modal-option">
+                Re-enter Text (Clean, Flat Vector)
+            </button>
+            <button id="fix-submenu-specific-btn" class="modal-option">
+                Other Specific Correction...
+            </button>
+        </div>
+    </div>
+    
+    <div id="re-enter-text-modal-backdrop" class="modal-backdrop">
+        <div id="re-enter-text-menu" class="modal-menu">
+            <h3>Enter all text exactly as it should appear:</h3>
+            <textarea id="re-enter-text-prompt-text" placeholder="e.g., 'SRI KRISHNA PUBLIC SR. SEC. SCHOOL' (Use &#xA; for new lines)"></textarea>
+            <button id="re-enter-text-submit-btn" class="modal-option">Submit Text</button>
+        </div>
+    </div>
+    
+    <div id="image-viewer-backdrop">
+        <img id="image-viewer-img" src="" alt="Full size image">
+    </div>
+
+
+    <div id="top-bar">
+        <h2>DTP EXPERT</h2>
+        <div id="auth-controls">
+            <button id="login-btn">Sign In with Google</button>
+            <div id="auth-signed-in">
+                <div id="user-initial-circle"></div>
+                <div id="user-menu" class="hidden">
+                    <div id="user-menu-email"></div>
+                    <button id="logout-btn">Sign Out</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div id="chat-history">
+            <div class="ai-message" id="welcome-message">
+                Hello! Please sign in, then provide an image and select a task to begin.
+            </div>
+        </div>
+
+        <div id="input-wrapper">
+            <div id="input-area">
+                <button class="input-btn" id="image-btn">🖼️</button>
+                <button class="input-btn" id="help-btn">❓</button>
+                <button id="task-selector" class="placeholder">Click to select a task...</button>
+                <button id="generate-button" onclick="callAI()">&#9654;</button>    
+                <button id="stop-button">&#9632;</button>
+            </div>
+            
+            <div id="footer-disclaimer">
+                Our DTP Expert can also make mistakes.<br>Always verify designs before final production.
+            </div>
+        </div>
+        
+    </div>
+
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY_HERE",
+            authDomain: "your-project-id.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project-id.firebasestorage.app",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID",
+            measurementId: "G-XXXXXXXX"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        const FUNCTION_URL = "YOUR_CLOUD_FUNCTION_URL"; 
+
+        let lastUploadedImageBase64 = null;
+        let lastUploadedImageSrc = null;
+        let controller = null;
+        let lastAIImageBase64 = null; 
+        
+        const auth = firebase.auth();
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const authSignedInDiv = document.getElementById('auth-signed-in');
+        const initialCircle = document.getElementById('user-initial-circle');
+        const userMenu = document.getElementById('user-menu');
+        const userMenuEmail = document.getElementById('user-menu-email');
+        const welcomeMessage = document.getElementById('welcome-message'); 
+        const chatHistory = document.getElementById('chat-history'); 
+
+        const imageBtn = document.getElementById('image-btn');
+        const helpBtn = document.getElementById('help-btn');
+        const taskSelector = document.getElementById('task-selector');
+        
+        const taskModalBackdrop = document.getElementById('task-modal-backdrop');
+        const helpModalBackdrop = document.getElementById('help-modal-backdrop');
+        const imageViewerBackdrop = document.getElementById('image-viewer-backdrop'); 
+        const imageViewerImg = document.getElementById('image-viewer-img'); 
+        
+        const executiveModalBackdrop = document.getElementById('executive-modal-backdrop');
+        const executivePromptText = document.getElementById('executive-prompt-text');
+        const executiveSubmitBtn = document.getElementById('executive-submit-btn');
+        
+        const fixPromptModalBackdrop = document.getElementById('fix-prompt-modal-backdrop');
+        const fixPromptText = document.getElementById('fix-prompt-text');
+        const fixPromptSubmitBtn = document.getElementById('fix-prompt-submit-btn');
+
+        const fixSubmenuModalBackdrop = document.getElementById('fix-submenu-modal-backdrop');
+        const fixSubmenuSmoothBtn = document.getElementById('fix-submenu-smooth-btn');
+        const fixSubmenuTraceBtn = document.getElementById('fix-submenu-trace-btn'); 
+        const fixSubmenuReenterTextBtn = document.getElementById('fix-submenu-reenter-text-btn'); 
+        const fixSubmenuSpecificBtn = document.getElementById('fix-submenu-specific-btn');
+
+        const reEnterTextModalBackdrop = document.getElementById('re-enter-text-modal-backdrop');
+        const reEnterTextPromptText = document.getElementById('re-enter-text-prompt-text');
+        const reEnterTextSubmitBtn = document.getElementById('re-enter-text-submit-btn');
+
+        const imageInput = document.getElementById('image_input');
+        const taskPromptInput = document.getElementById('selected_task_prompt');
+        const taskDisplayInput = document.getElementById('selected_task_display');
+
+        const generateBtn = document.getElementById('generate-button');
+        const stopBtn = document.getElementById('stop-button');
+        
+        // === NEW: IMAGE COMPRESSION FUNCTION ===
+        async function compressImage(file, maxWidth = 1920, quality = 0.85) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > maxWidth) {
+                            height = (height * maxWidth) / width;
+                            width = maxWidth;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        canvas.toBlob((blob) => {
+                            if (!blob) {
+                                reject(new Error('Compression failed'));
+                                return;
+                            }
+                            const compressedReader = new FileReader();
+                            compressedReader.onload = (e) => resolve(e.target.result);
+                            compressedReader.onerror = reject;
+                            compressedReader.readAsDataURL(blob);
+                        }, 'image/jpeg', quality);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        loginBtn.addEventListener('click', () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(err => {
+                console.error('Sign in error:', err);
+                addMessage('system', 'Sign in failed. Please try again.');
+            });
+        });
+        
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut();
+        });
+        
+        initialCircle.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            userMenu.classList.toggle('hidden');
+        });
+
+        window.addEventListener('click', function(e) {
+            if (!userMenu.classList.contains('hidden') && !userMenu.contains(e.target)) {
+                userMenu.classList.add('hidden');
+            }
+        });
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                initialCircle.textContent = user.email.charAt(0).toUpperCase();
+                userMenuEmail.textContent = user.email; 
+                loginBtn.style.display = 'none';
+                authSignedInDiv.style.display = 'flex';
+                userMenu.classList.add('hidden'); 
+                
+                if (chatHistory.children.length === 1 && chatHistory.children[0] === welcomeMessage) {
+                    welcomeMessage.style.display = 'none';
+                }
+                
+            } else {
+                loginBtn.style.display = 'block';
+                authSignedInDiv.style.display = 'none';
+                userMenu.classList.add('hidden'); 
+                welcomeMessage.style.display = 'block';
+            }
+        });
+
+        
+        imageBtn.addEventListener('click', () => imageInput.click());
+        
+        // === UPDATED: IMAGE UPLOAD WITH COMPRESSION ===
+        imageInput.addEventListener('change', async () => {
+            if (imageInput.files[0]) {
+                imageBtn.textContent = "⏳";
+                imageBtn.style.color = "#FFA500";
+                
+                try {
+                    const compressed = await compressImage(imageInput.files[0]);
+                    lastUploadedImageSrc = compressed;
+                    lastUploadedImageBase64 = compressed.split(',')[1];
+                    
+                    imageBtn.textContent = "✅";
+                    imageBtn.style.color = "#4CAF50";
+                    lastAIImageBase64 = null;
+                } catch (err) {
+                    console.error("Compression failed:", err);
+                    imageBtn.textContent = "❌";
+                    imageBtn.style.color = "#FF0000";
+                    addMessage('system', 'Image processing failed. Please try a different image.');
+                }
+            }
+        });
+        
+        helpBtn.addEventListener('click', () => helpModalBackdrop.style.display = 'flex');
+        
+        taskSelector.addEventListener('click', () => {
+            taskModalBackdrop.style.display = 'flex';
+        });
+        
+        stopBtn.addEventListener('click', () => {
+            if (controller) {
+                controller.abort(); 
+                controller = null;
+            }
+        });
+
+        document.querySelectorAll('#task-menu .modal-option').forEach(button => {
+            button.addEventListener('click', () => { 
+                const prompt = button.getAttribute('data-prompt');
+                let display = button.getAttribute('data-display');
+                
+                if (prompt === 'executive') {
+                    taskModalBackdrop.style.display = 'none';
+                    executiveModalBackdrop.style.display = 'flex';
+                    executivePromptText.focus(); 
+                
+                } else if (prompt === 'fix-specific') {
+                    if (!lastAIImageBase64 && !lastUploadedImageBase64) {
+                        alert("Please upload an image and generate a DTP first.");
+                        return;
+                    }
+                    taskModalBackdrop.style.display = 'none';
+                    fixSubmenuModalBackdrop.style.display = 'flex';
+                
+                } else {
+                    taskPromptInput.value = prompt;
+                    taskDisplayInput.value = display;
+                    taskSelector.textContent = display;
+                    taskSelector.classList.remove('placeholder');
+                    taskModalBackdrop.style.display = 'none';
+                }
+            });
+        });
+        
+        executiveSubmitBtn.addEventListener('click', () => {
+            const customPrompt = executivePromptText.value.trim();
+            if (customPrompt) {
+                taskPromptInput.value = "Custom: " + customPrompt;
+                taskDisplayInput.value = "Custom: " + customPrompt.substring(0, 40) + "..."; 
+                taskSelector.textContent = taskDisplayInput.value;
+                taskSelector.classList.remove('placeholder');
+                executiveModalBackdrop.style.display = 'none';
+                executivePromptText.value = ""; 
+            }
+        });
+        
+        fixPromptSubmitBtn.addEventListener('click', () => {
+            const fixPrompt = fixPromptText.value.trim();
+            if (fixPrompt) {
+                taskPromptInput.value = "Fix: " + fixPrompt;
+                taskDisplayInput.value = "Fix: " + fixPrompt.substring(0, 40) + "..."; 
+                taskSelector.textContent = taskDisplayInput.value;
+                taskSelector.classList.remove('placeholder');
+                fixPromptModalBackdrop.style.display = 'none';
+                fixPromptText.value = "";
+            }
+        });
+
+        fixSubmenuSmoothBtn.addEventListener('click', () => {
+            taskPromptInput.value = "Fix: Look at the last AI-generated image. It has texture. Recreate it as a perfectly smooth, flat 2D graphic with all textures removed. The original user image is included for context only.";
+            taskDisplayInput.value = "Fix: Make it Smooth (Remove Texture)";
+            
+            taskSelector.textContent = taskDisplayInput.value;
+            taskSelector.classList.remove('placeholder');
+            
+            fixSubmenuModalBackdrop.style.display = 'none';
+        });
+
+        fixSubmenuTraceBtn.addEventListener('click', () => {
+            taskPromptInput.value = "Fix-Re-check: Start over. The last AI attempt had incorrect colors. Look ONLY at the user's original uploaded image and perfectly recreate it as a flat graphic, matching the original colors exactly.";
+            taskDisplayInput.value = "Fix: Force Original Colors (Start Over)";
+            
+            taskSelector.textContent = taskDisplayInput.value;
+            taskSelector.classList.remove('placeholder');
+            
+            fixSubmenuModalBackdrop.style.display = 'none';
+        });
+        
+        fixSubmenuReenterTextBtn.addEventListener('click', () => {
+            fixSubmenuModalBackdrop.style.display = 'none';
+            reEnterTextModalBackdrop.style.display = 'flex'; 
+            reEnterTextPromptText.focus();
+        });
+
+        reEnterTextSubmitBtn.addEventListener('click', () => {
+            const reEnteredText = reEnterTextPromptText.value.trim();
+            if (reEnteredText) {
+                taskPromptInput.value = `Fix: Recreate the design from the previous image. Analyze the text in the original user image and replace all existing text elements with the following provided text, ensuring the font style, size, color, and placement are preserved as closely as possible to the original image for each text element, using a clean, flat vector style: "${reEnteredText}"`;
+                taskDisplayInput.value = `Fix: Corrected Text ("${reEnteredText.substring(0, 30)}...")`; 
+                taskSelector.textContent = taskDisplayInput.value;
+                taskSelector.classList.remove('placeholder');
+                reEnterTextModalBackdrop.style.display = 'none';
+                reEnterTextPromptText.value = ""; 
+            }
+        });
+
+        fixSubmenuSpecificBtn.addEventListener('click', () => {
+            fixSubmenuModalBackdrop.style.display = 'none';
+            fixPromptModalBackdrop.style.display = 'flex';
+            fixPromptText.focus();
+        });
+
+        taskModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === taskModalBackdrop) {
+                taskModalBackdrop.style.display = 'none';
+            }
+        });
+        helpModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === helpModalBackdrop) {
+                helpModalBackdrop.style.display = 'none';
+            }
+        });
+        executiveModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === executiveModalBackdrop) {
+                executiveModalBackdrop.style.display = 'none';
+            }
+        });
+        fixPromptModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === fixPromptModalBackdrop) {
+                fixPromptModalBackdrop.style.display = 'none';
+            }
+        });
+        fixSubmenuModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === fixSubmenuModalBackdrop) {
+                fixSubmenuModalBackdrop.style.display = 'none';
+            }
+        });
+        reEnterTextModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === reEnterTextModalBackdrop) {
+                reEnterTextModalBackdrop.style.display = 'none';
+            }
+        });
+
+        document.querySelectorAll('#help-menu .modal-option').forEach(button => {
+            button.addEventListener('click', () => {
+                 helpModalBackdrop.style.display = 'none';
+            });
+        });
+
+        imageViewerBackdrop.addEventListener('click', () => {
+            imageViewerBackdrop.style.display = 'none';
+            imageViewerImg.src = ""; 
+        });
+
+        const toBase64 = (file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+
+        // === UPDATED: ADD MESSAGE WITH LAZY LOADING ===
+        function addMessage(sender, content) {
+            if (welcomeMessage) {
+                welcomeMessage.style.display = 'none';
+            }
+            
+            const chatHistory = document.getElementById('chat-history');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.innerHTML = content;
+            chatHistory.appendChild(messageDiv);
+            
+            // Enhanced image loading
+            messageDiv.querySelectorAll('img').forEach(img => {
+                img.addEventListener('load', () => {
+                    img.classList.add('loaded');
+                });
+                
+                img.addEventListener('error', () => {
+                    img.alt = 'Failed to load image';
+                    img.style.opacity = '0.5';
+                });
+                
+                img.addEventListener('click', () => {
+                    imageViewerImg.src = img.src;
+                    imageViewerBackdrop.style.display = 'flex'; 
+                });
+            });
+            
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            return messageDiv;
+        }
+        
+        
+        async function callAI() {
+            const user = auth.currentUser;
+            if (!user) {
+                addMessage('system', 'Error: Please sign in to use this service.');
+                return;
+            }
+            
+            let userPrompt = taskPromptInput.value;
+            const userPromptForDisplay = taskDisplayInput.value;
+            const file = imageInput.files[0];
+            
+            if (!file && !lastUploadedImageBase64) {
+                addMessage('system', 'Error: Please click the "Image" button to upload an image.');
+                return;
+            }
+            if (!userPrompt) {
+                addMessage('system', 'Error: Please click the text box to select a task.');
+                return;
+            }
+            
+            let token;
+            try {
+                token = await user.getIdToken();
+            } catch (err) {
+                addMessage('system', `Error: Could not get auth token. ${err.message}`);
+                return;
+            }
+
+            const payload = {
+                prompt: userPrompt
+            };
+            
+            let isFixRequest = userPrompt.startsWith('Fix: ');
+            let isCustomRequest = userPrompt.startsWith('Custom: ');
+            let isFixRecheckRequest = userPrompt.startsWith('Fix-Re-check: ');
+
+            
+            let isNewJob = [
+                'make a dtp with full color flat graphic', 
+                'make a full color dtp without texture',
+                'make a dtp with only black and white color and flat graphic',
+                'Recreate the design, but make all text elements significantly bolder.'
+            ].includes(userPrompt);
+
+            if (isNewJob) {
+                lastAIImageBase64 = null;
+            } 
+            
+            if (isFixRecheckRequest) {
+                payload.prompt = userPrompt.substring('Fix-Re-check: '.length);
+            }
+            else if (isFixRequest && lastAIImageBase64) {
+                 payload.previous_ai_image = lastAIImageBase64;
+            } 
+            else if (isCustomRequest && lastAIImageBase64) {
+                payload.previous_ai_image = lastAIImageBase64;
+                payload.prompt = userPrompt.substring('Custom: '.length);
+            } 
+            else if ((isFixRequest || isFixRecheckRequest) && !lastAIImageBase64 && !lastUploadedImageBase64) {
+                 addMessage('system', 'Error: Cannot perform a fix without a previous AI generated image.');
+                 generateBtn.style.display = 'block';
+                 stopBtn.style.display = 'none';
+                 taskSelector.textContent = "Click to select a task...";
+                 taskSelector.classList.add('placeholder');
+                 taskPromptInput.value = "";
+                 taskDisplayInput.value = "";
+                 return;
+            }
+            
+            let userMessageHTML = `<p>${userPromptForDisplay}</p>`; 
+
+            if (file) {
+                const base64String = await toBase64(file);
+                lastUploadedImageSrc = base64String;
+                lastUploadedImageBase64 = base64String.split(',')[1];
+                payload.image_base64 = lastUploadedImageBase64;
+                userMessageHTML += `<img src="${lastUploadedImageSrc}" alt="Uploaded Original Image">`;
+            } else if (lastUploadedImageBase64) {
+                payload.image_base64 = lastUploadedImageBase64;
+                userMessageHTML += `<img src="${lastUploadedImageSrc}" alt="Uploaded Original Image (from memory)">`;
+            } else {
+                 addMessage('system', 'Error: No original image available to process.');
+                 generateBtn.style.display = 'block';
+                 stopBtn.style.display = 'none';
+                 return;
+            }
+
+            addMessage('user', userMessageHTML);
+            
+            const loadingMessage = addMessage('ai', 'Recreating your design...');
+            loadingMessage.classList.add('is-loading-ai');
+            
+            generateBtn.style.display = 'none';
+            stopBtn.style.display = 'block';
+            controller = new AbortController();
+            const signal = controller.signal;
+
+            try {
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload),
+                    signal: signal 
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    loadingMessage.className = 'message system-message';
+                    loadingMessage.classList.remove('is-loading-ai');
+                    loadingMessage.innerHTML = `Error: ${data.error || 'Unknown error'}`;
+                    lastAIImageBase64 = null;
+                } else {
+                    let html_content = "";
+                    if (data.text_response) {
+                        const text_node = document.createTextNode(data.text_response);
+                        html_content += `<p>${text_node.textContent}</p>`;
+                    }
+                    if (data.image_base64) {
+                        html_content += `<img src="data:${data.mime_type};base64,${data.image_base64}" alt="Generated Image">`;
+                        lastAIImageBase64 = data.image_base64; 
+                    } else {
+                        lastAIImageBase64 = null;
+                    }
+                    
+                    if (html_content === "") {
+                        loadingMessage.className = 'message system-message';
+                        loadingMessage.innerHTML = 'Error: The AI returned an empty response.';
+                    } else {
+                        loadingMessage.innerHTML = html_content;
+                        loadingMessage.querySelectorAll('img').forEach(img => {
+                            img.addEventListener('load', () => {
+                                img.classList.add('loaded');
+                            });
+                            img.addEventListener('click', () => {
+                                imageViewerImg.src = img.src;
+                                imageViewerBackdrop.style.display = 'flex'; 
+                            });
+                        });
+                    }
+                }
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    loadingMessage.className = 'message system-message';
+                    loadingMessage.innerHTML = 'Request cancelled.';
+                } else {
+                    loadingMessage.className = 'message system-message';
+                    loadingMessage.innerHTML = `Error: Failed to connect. ${err.message}`;
+                }
+                lastAIImageBase64 = null; 
+            } finally {
+                loadingMessage.classList.remove('is-loading-ai');
+            
+                generateBtn.style.display = 'block';
+                stopBtn.style.display = 'none';
+                controller = null; 
+
+                taskSelector.textContent = "Click to select a task...";
+                taskSelector.classList.add('placeholder');
+                taskPromptInput.value = "";
+                taskDisplayInput.value = "";
+                
+                if (isNewJob) {
+                    imageInput.value = "";
+                    imageBtn.textContent = "🖼️";
+                    imageBtn.style.color = "var(--text-muted)";
+                } else {
+                    imageBtn.textContent = "🖼️";
+                    imageBtn.style.color = "var(--text-muted)";
+                }
+            }
+        }
+    </script>
+</body>
+</html>
